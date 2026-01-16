@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0d9488;
+  --color-primary-light: #ccfbf1;
+  --color-secondary: #2563eb;
+  --color-secondary-light: #dbeafe;
+  --color-success: #059669;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-navy: #1e3a5f;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Tab styles */
+.tab-active {
+  @apply bg-white text-teal-700 border-b-2 border-teal-500 font-semibold;
+}
+
+.tab-inactive {
+  @apply text-slate-600 hover:text-teal-600 hover:bg-slate-50;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6;
+}
+
+.card-header {
+  @apply text-lg font-semibold text-slate-800 mb-4;
+}
+
+/* Metric card */
+.metric-card {
+  @apply bg-gradient-to-br from-white to-slate-50 rounded-xl p-5 border border-slate-200 shadow-sm;
+}
+
+.metric-value {
+  @apply text-3xl font-bold text-slate-800;
+}
+
+.metric-label {
+  @apply text-sm font-medium text-slate-500 mt-1;
+}
+
+/* Status badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-success {
+  @apply bg-emerald-100 text-emerald-800;
+}
+
+.badge-warning {
+  @apply bg-amber-100 text-amber-800;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-red-800;
+}
+
+.badge-info {
+  @apply bg-blue-100 text-blue-800;
+}
+
+/* Button styles */
+.btn {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800;
+}
+
+.btn-secondary {
+  @apply bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300;
+}
+
+.btn-outline {
+  @apply border-2 border-teal-600 text-teal-600 hover:bg-teal-50;
+}
+
+/* Input styles */
+.input {
+  @apply w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all;
+}
+
+/* Table styles */
+.table-container {
+  @apply overflow-x-auto rounded-lg border border-slate-200;
+}
+
+.table {
+  @apply w-full text-sm text-left;
+}
+
+.table th {
+  @apply px-4 py-3 bg-slate-50 font-semibold text-slate-700 border-b border-slate-200;
+}
+
+.table td {
+  @apply px-4 py-3 border-b border-slate-100;
+}
+
+.table tr:hover {
+  @apply bg-slate-50;
+}
+
+/* Progress bar */
+.progress-bar {
+  @apply h-2 bg-slate-200 rounded-full overflow-hidden;
+}
+
+.progress-fill {
+  @apply h-full rounded-full transition-all duration-500;
+}
+
+/* Animation classes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Chart container */
+.chart-container {
+  @apply bg-white rounded-xl border border-slate-200 p-4;
+}
+
+/* Risk priority colors */
+.rpn-critical {
+  @apply bg-red-600 text-white;
+}
+
+.rpn-high {
+  @apply bg-orange-500 text-white;
+}
+
+.rpn-medium {
+  @apply bg-yellow-500 text-slate-900;
+}
+
+.rpn-low {
+  @apply bg-green-500 text-white;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-break {
+    page-break-before: always;
+  }
+}
+
+/* Loading spinner */
+.spinner {
+  @apply w-8 h-8 border-4 border-slate-200 border-t-teal-600 rounded-full animate-spin;
+}
