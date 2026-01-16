@@ -34,7 +34,21 @@ const tabs = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [riskRegister, setRiskRegister] = useState(modelData.risk_register);
+  const modelNames = Object.keys(modelData.model_results || {});
+  const [riskRegisters, setRiskRegisters] = useState(() => {
+    if (!modelNames.length) {
+      const base = modelData.risk_register || [];
+      return { Default: base.map((risk, idx) => ({ ...risk, id: risk.id ?? idx + 1 })) };
+    }
+    const baseRisks = modelData.risk_register || [];
+    return modelNames.reduce((acc, name) => {
+      acc[name] = baseRisks.map((risk, idx) => ({
+        ...risk,
+        id: risk.id ?? idx + 1
+      }));
+      return acc;
+    }, {});
+  });
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -45,13 +59,19 @@ function App() {
       case 'modelcard':
         return <ModelCard modelData={modelData} />;
       case 'risk':
-        return <RiskRegister risks={riskRegister} setRisks={setRiskRegister} />;
+        return (
+          <RiskRegister
+            risksByModel={riskRegisters}
+            setRisksByModel={setRiskRegisters}
+            modelResults={modelData.model_results}
+          />
+        );
       case 'bias':
         return <BiasMitigation modelData={modelData} />;
       case 'analytics':
         return <Analytics modelData={modelData} heartData={heartData} />;
       case 'summary':
-        return <ExecutiveSummary modelData={modelData} riskRegister={riskRegister} />;
+        return <ExecutiveSummary modelData={modelData} riskRegister={riskRegisters} />;
       default:
         return <Dashboard modelData={modelData} heartData={heartData} />;
     }

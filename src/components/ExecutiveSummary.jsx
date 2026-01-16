@@ -20,8 +20,21 @@ const ExecutiveSummary = ({ modelData, riskRegister }) => {
   const { model_card, model_results, dataset_stats, subgroup_analysis } = modelData;
   const bestModel = model_results['Gradient Boosting'];
 
+  const resolvedRisks = () => {
+    if (Array.isArray(riskRegister)) return riskRegister;
+    if (riskRegister && typeof riskRegister === 'object') {
+      const preferred = model_card?.best_model;
+      if (preferred && riskRegister[preferred]) return riskRegister[preferred];
+      const [firstKey] = Object.keys(riskRegister);
+      if (firstKey) return riskRegister[firstKey];
+    }
+    return [];
+  };
+
+  const riskList = resolvedRisks();
+
   // Sort risks by RPN
-  const sortedRisks = [...riskRegister]
+  const sortedRisks = [...riskList]
     .map(r => ({ ...r, rpn: r.impact * r.likelihood }))
     .sort((a, b) => b.rpn - a.rpn)
     .slice(0, 5);
@@ -307,9 +320,9 @@ const ExecutiveSummary = ({ modelData, riskRegister }) => {
       type: 'pie',
       radius: ['40%', '70%'],
       data: [
-        { value: riskRegister.filter(r => r.impact * r.likelihood >= 15).length, name: 'High', itemStyle: { color: '#ef4444' } },
-        { value: riskRegister.filter(r => r.impact * r.likelihood >= 10 && r.impact * r.likelihood < 15).length, name: 'Medium', itemStyle: { color: '#f59e0b' } },
-        { value: riskRegister.filter(r => r.impact * r.likelihood < 10).length, name: 'Low', itemStyle: { color: '#10b981' } }
+        { value: riskList.filter(r => r.impact * r.likelihood >= 15).length, name: 'High', itemStyle: { color: '#ef4444' } },
+        { value: riskList.filter(r => r.impact * r.likelihood >= 10 && r.impact * r.likelihood < 15).length, name: 'Medium', itemStyle: { color: '#f59e0b' } },
+        { value: riskList.filter(r => r.impact * r.likelihood < 10).length, name: 'Low', itemStyle: { color: '#10b981' } }
       ],
       label: { formatter: '{b}: {c}' }
     }]
@@ -378,7 +391,7 @@ const ExecutiveSummary = ({ modelData, riskRegister }) => {
             </div>
             <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 text-center">
               <AlertTriangle className="w-8 h-8 text-amber-600 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-amber-700">{riskRegister.filter(r => r.impact * r.likelihood >= 15).length}</p>
+              <p className="text-3xl font-bold text-amber-700">{riskList.filter(r => r.impact * r.likelihood >= 15).length}</p>
               <p className="text-sm text-amber-600 font-medium">High Priority Risks</p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { 
   Plus, 
@@ -12,7 +12,10 @@ import {
   ChevronUp
 } from 'lucide-react';
 
-const RiskRegister = ({ risks, setRisks }) => {
+const RiskRegister = ({ risksByModel, setRisksByModel, modelResults }) => {
+  const modelNames = Object.keys(risksByModel || {});
+  const [selectedModel, setSelectedModel] = useState(modelNames[0] || '');
+  const [viewMode, setViewMode] = useState('focused'); // focused | all
   const [editingId, setEditingId] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -26,12 +29,72 @@ const RiskRegister = ({ risks, setRisks }) => {
 
   const categories = ['Bias', 'Model Drift', 'Misclassification', 'Automation Bias', 'Privacy', 'Generalization', 'Data Quality', 'Operational'];
 
+  // Keep selection in sync with available models
+  useEffect(() => {
+    if (!selectedModel && modelNames.length) {
+      setSelectedModel(modelNames[0]);
+    } else if (selectedModel && !modelNames.includes(selectedModel) && modelNames.length) {
+      setSelectedModel(modelNames[0]);
+    }
+  }, [modelNames, selectedModel]);
+
+  // Clear editing state when switching models
+  useEffect(() => {
+    setEditingId(null);
+    setIsAdding(false);
+    setExpandedId(null);
+    resetForm();
+  }, [selectedModel]);
+
+  const risks = risksByModel[selectedModel] || [];
+
+  const updateRisks = (updater) => {
+    setRisksByModel(prev => {
+      const current = prev[selectedModel] || [];
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [selectedModel]: next };
+    });
+  };
+
   // Calculate RPN and sort
   const sortedRisks = useMemo(() => {
     return [...risks]
       .map(r => ({ ...r, rpn: r.impact * r.likelihood }))
       .sort((a, b) => b.rpn - a.rpn);
   }, [risks]);
+
+  const sortedByModel = useMemo(() => {
+    return modelNames.reduce((acc, name) => {
+      const list = risksByModel[name] || [];
+      acc[name] = [...list]
+        .map(r => ({ ...r, rpn: r.impact * r.likelihood }))
+        .sort((a, b) => b.rpn - a.rpn);
+      return acc;
+    }, {});
+  }, [modelNames, risksByModel]);
+
+  const modelComparison = useMemo(() => {
+    return modelNames.map(name => {
+      const list = risksByModel[name] || [];
+      const total = list.length;
+      const high = list.filter(r => r.impact * r.likelihood >= 15).length;
+      const medium = list.filter(r => r.impact * r.likelihood >= 10 && r.impact * r.likelihood < 15).length;
+      const low = list.filter(r => r.impact * r.likelihood < 10).length;
+      const avgRpn = total ? list.reduce((acc, r) => acc + r.impact * r.likelihood, 0) / total : 0;
+      const metrics = modelResults?.[name];
+
+      return {
+        name,
+        total,
+        high,
+        medium,
+        low,
+        avgRpn,
+        accuracy: metrics?.accuracy,
+        f1: metrics?.f1_score
+      };
+    });
+  }, [modelNames, modelResults, risksByModel]);
 
   // Get RPN color class
   const getRPNClass = (rpn) => {
@@ -60,12 +123,13 @@ const RiskRegister = ({ risks, setRisks }) => {
 
   // Add new risk
   const handleAdd = () => {
+    const nextId = risks.length ? Math.max(...risks.map(r => r.id || 0)) + 1 : 1;
     const newRisk = {
-      id: Math.max(...risks.map(r => r.id), 0) + 1,
+      id: nextId,
       ...formData,
       rpn: formData.impact * formData.likelihood
     };
-    setRisks(prev => [...prev, newRisk].sort((a, b) => (b.impact * b.likelihood) - (a.impact * a.likelihood)));
+    updateRisks(prev => [...prev, newRisk].sort((a, b) => (b.impact * b.likelihood) - (a.impact * a.likelihood)));
     setIsAdding(false);
     resetForm();
   };
@@ -84,7 +148,7 @@ const RiskRegister = ({ risks, setRisks }) => {
 
   // Save edited risk
   const handleSave = (id) => {
-    setRisks(prev => prev.map(r => 
+    updateRisks(prev => prev.map(r => 
       r.id === id 
         ? { ...r, ...formData, rpn: formData.impact * formData.likelihood }
         : r
@@ -96,7 +160,7 @@ const RiskRegister = ({ risks, setRisks }) => {
   // Delete risk
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this risk?')) {
-      setRisks(prev => prev.filter(r => r.id !== id));
+      updateRisks(prev => prev.filter(r => r.id !== id));
     }
   };
 
@@ -275,13 +339,138 @@ const RiskRegister = ({ risks, setRisks }) => {
           </p>
         </div>
         <button 
-          onClick={() => { setIsAdding(true); resetForm(); }}
+          onClick={() => { setIsAdding(true); setViewMode('focused'); resetForm(); }}
           className="btn btn-primary"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Risk
         </button>
       </div>
+
+      {/* Model Selector */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {modelNames.map(name => (
+            <button
+              key={name}
+              onClick={() => { setSelectedModel(name); setViewMode('focused'); }}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                selectedModel === name && viewMode === 'focused'
+                  ? 'border-teal-400 bg-teal-50 text-teal-700 shadow-sm' 
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <span>{name}</span>
+                {modelResults?.[name] && (
+                  <span className="text-xs text-slate-500">
+                    {(modelResults[name].accuracy * 100).toFixed(1)}% acc
+                  </span>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-slate-500">View:</span>
+          <div className="flex rounded-lg overflow-hidden border border-slate-200">
+            <button
+              onClick={() => setViewMode('focused')}
+              className={`px-3 py-1.5 text-sm ${viewMode === 'focused' ? 'bg-teal-600 text-white' : 'bg-white text-slate-600'}`}
+            >
+              Focused
+            </button>
+            <button
+              onClick={() => setViewMode('all')}
+              className={`px-3 py-1.5 text-sm ${viewMode === 'all' ? 'bg-teal-600 text-white' : 'bg-white text-slate-600'}`}
+            >
+              All Models
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Model Comparison Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {modelComparison.map(model => (
+          <div
+            key={model.name}
+            className={`card ${selectedModel === model.name ? 'border-teal-300 shadow-md' : ''}`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-semibold text-slate-800">{model.name}</p>
+              <span className="text-xs text-slate-500">
+                Acc {(model.accuracy * 100 || 0).toFixed(1)}% · F1 {(model.f1 * 100 || 0).toFixed(1)}%
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="p-2 rounded bg-red-50 text-center">
+                <p className="font-bold text-red-600">{model.high}</p>
+                <p className="text-xs text-red-500">High</p>
+              </div>
+              <div className="p-2 rounded bg-amber-50 text-center">
+                <p className="font-bold text-amber-600">{model.medium}</p>
+                <p className="text-xs text-amber-600">Medium</p>
+              </div>
+              <div className="p-2 rounded bg-emerald-50 text-center">
+                <p className="font-bold text-emerald-600">{model.low}</p>
+                <p className="text-xs text-emerald-600">Low</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Avg RPN: <span className="font-semibold text-slate-700">{model.avgRpn.toFixed(1)}</span> · Total {model.total}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {viewMode === 'all' && (
+        <div className="card">
+          <h3 className="card-header">Risks by Model</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {modelNames.map(name => {
+              const list = sortedByModel[name] || [];
+              const metrics = modelResults?.[name];
+              return (
+                <div key={name} className="border border-slate-200 rounded-lg p-3 bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold text-slate-800">{name}</p>
+                    {metrics && (
+                      <span className="text-xs text-slate-500">
+                        Acc {(metrics.accuracy * 100).toFixed(1)}% · F1 {(metrics.f1_score * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-auto pr-1">
+                    {list.length === 0 && (
+                      <p className="text-xs text-slate-500">No risks defined</p>
+                    )}
+                    {list.map((risk, idx) => (
+                      <div key={risk.id || idx} className="border border-slate-200 rounded-lg p-2">
+                        <div className="flex items-center justify-between">
+                          <span className={`badge ${
+                            risk.rpn >= 15 ? 'badge-danger' : 
+                            risk.rpn >= 10 ? 'badge-warning' : 
+                            'badge-success'
+                          }`}>
+                            {risk.category}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${getRPNClass(risk.rpn)}`}>
+                            RPN: {risk.rpn}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-slate-800 mt-1">{risk.risk}</p>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{risk.mitigation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-slate-500 mt-3">Switch to Focused view to edit risks for a specific model.</p>
+        </div>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
